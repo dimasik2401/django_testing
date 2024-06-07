@@ -13,7 +13,8 @@ AUTHOR_CLIENT = pytest.lazy_fixture('author_client')
 
 def test_ten_news_on_main_page(news_for_main_page, client, url_news_home):
     """Проверить, что на главной странице выводится десять новостей."""
-    assert len(client.get(url_news_home).context['object_list']) == settings.NEWS_COUNT_ON_HOME_PAGE
+    assert len(client.get(url_news_home).context[
+        'object_list']) == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
 def test_sort_news(news_for_main_page, client, url_news_home):

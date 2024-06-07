@@ -43,7 +43,6 @@ def test_author_can_delete_comment(author_client, comment,
     assert Comment.objects.count() == count_comments - 1
 
 
-
 def test_not_author_can_not_edit_comment(user_client, comment,
                                          form_data, url_comment_edit,
                                          author, news):
@@ -61,7 +60,9 @@ def test_not_author_can_not_edit_comment(user_client, comment,
     assert edited_comment_comment.news == news
 
 
-def test_not_author_can_not_delete_comment(user_client, comment, url_comment_delete):
+def test_not_author_can_not_delete_comment(user_client,
+                                           comment,
+                                           url_comment_delete):
     """Проверить, что пользователь не может удалять чужие комментарии."""
     count_comments = Comment.objects.count()
     response = user_client.post(url_comment_delete)
@@ -92,7 +93,9 @@ def test_authorized_can_leave_comments(
     response = user_client.post(url_news_detail, data=form_data)
     assertRedirects(response, f'{url_news_detail}#comments')
     assert Comment.objects.count() == count_comments + 1
-    new_comment = Comment.objects.get(text=form_data['text'], author=user, news=news)
+    new_comment = Comment.objects.get(text=form_data['text'],
+                                      author=user,
+                                      news=news)
     assert new_comment.text == form_data['text']
     assert new_comment.author == user
     assert new_comment.news == news
