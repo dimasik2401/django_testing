@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
+
 from notes.forms import NoteForm
 from notes.models import Note
 
@@ -25,26 +26,28 @@ class TestContent(TestCase):
         cls.note = Note.objects.create(title=cls.TITLE, text=cls.TEXT,
                                        author=cls.author, slug=cls.SLUG)
 
-    def setUp(self):
-        self.author_client = Client()
-        self.author_client.force_login(self.author)
-        self.user_client = Client()
-        self.user_client.force_login(self.user)
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+        cls.user_client = Client()
+        cls.user_client.force_login(cls.user)
 
     def test_author_note_appears_on_the_notes_list_page(self):
         """
         Проверить, что заметка автора отображается
         на странице списка заметок.
         """
+        initial_count = Note.objects.filter(author=self.author).count()
         response = self.author_client.get(self.NOTE_LIST_URL)
-        object_list = response.context['object_list']
+        object = response.context['object_list']
+        final_count = object.count()
+
         self.assertEqual(
-            object_list.count(),
-            1,
-            'Проверьте, что заметка пользователя передаётся на страницу со '
+            final_count,
+            initial_count,
+            'Проверьте, что заметка автора передаётся на страницу со '
             'списком заметок в списке object_list в словаре context!'
         )
-        note = object_list[0]
+        note = object[0]
         self.assertEqual(note.author, self.note.author, 'Автор неверен!')
         self.assertEqual(note.slug, self.note.slug, 'Slug заметки неверен!')
         self.assertEqual(note.title, self.note.title, 'Неверный заголовок!')
@@ -55,11 +58,14 @@ class TestContent(TestCase):
         Проверить, что список заметок должен содержать
         только заметки одного автора.
         """
+        initial_count = Note.objects.filter(author=self.user).count()
         response = self.user_client.get(self.NOTE_LIST_URL)
-        object_list = response.context['object_list']
+        object = response.context['object_list']
+        final_count = object.count()
+
         self.assertEqual(
-            object_list.count(),
-            0,
+            final_count,
+            initial_count,
             'Проверьте, что заметки одного пользователя не попадают в список '
             'заметок другого пользователя!'
         )

@@ -1,7 +1,9 @@
 from http import HTTPStatus
+
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
+
 from notes.models import Note
 
 
@@ -50,11 +52,10 @@ class TestRoutes(TestCase):
             author=cls.author,
         )
 
-    def setUp(self):
-        self.author_client = Client()
-        self.author_client.force_login(self.author)
-        self.user_client = Client()
-        self.user_client.force_login(self.user)
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+        cls.user_client = Client()
+        cls.user_client.force_login(cls.user)
 
     def test_page_for_author(self):
         """Проверка доступности страниц для пользователя автора."""
@@ -93,7 +94,7 @@ class TestRoutes(TestCase):
                         response,
                         redirect_url,
                         msg_prefix=f'Проверьте что страница {url} не доступна '
-                                   f'для не зарегистрированного пользователя'
-                                   f' и осуществляется редирект на '
-                                   f'{redirect_url}'
+                                   'для не зарегистрированного пользователя'
+                                   ' и осуществляется редирект на '
+                                   '{redirect_url}'
                     )
