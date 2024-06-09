@@ -5,6 +5,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from pytils.translit import slugify
 
+from notes.forms import WARNING
 from notes.models import Note
 
 
@@ -33,6 +34,29 @@ class TestCreateNote(TestCase):
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.user)
 
+        Note.objects.create(author=cls.user, **cls.form_data)
+
+    def test_unique_slug(self):
+        """Проверить, что невозможно создать две заметки с одинаковым slug."""
+        note_count = Note.objects.count()
+        response = self.auth_client.post(
+            self.ADD_NOTE_URL,
+            data=self.form_data
+        )
+        self.assertEqual(
+            Note.objects.count(),
+            note_count,
+            'Убедитесь, что нельзя создать две заметки с одинаковым slug!'
+        )
+        self.assertFormError(
+            response,
+            'form',
+            'slug',
+            errors=self.form_data.get('slug') + WARNING,
+            msg_prefix='Убедитесь, что нельзя создать две заметки с '
+                       'одинаковым slug!'
+        )
+
     def test_anon_user_cannot_create_note(self):
         """Анонимный пользователь не может создать заметку."""
         note_count = Note.objects.count()
@@ -42,7 +66,7 @@ class TestCreateNote(TestCase):
             'slug': 'test-slug'
         }
 
-        self.client.post(reverse('notes:add'), data=form_data)
+        self.client.post(self.ADD_NOTE_URL, data=form_data)
 
         final_notes_count = Note.objects.count()
         self.assertEqual(
@@ -118,23 +142,6 @@ class TestCreateNote(TestCase):
             'Убедитесь, что slug формируется автоматически из title.')
         self.assertEqual(note.author, self.user, 'Автор неверен!')
 
-    def test_unique_slug(self):
-        """Проверить, что невозможно создать две заметки с одинаковым slug."""
-        Note.objects.create(author=self.user, **self.form_data)
-        note_count = Note.objects.count()
-        self.auth_client.post(
-            self.ADD_NOTE_URL,
-            data=self.form_data
-        )
-
-        new_note_count = Note.objects.count()
-        if new_note_count > note_count:
-            self.assertEqual(
-                Note.objects.count(),
-                note_count,
-                'Убедитесь, что нельзя создать две заметки с одинаковым slug!'
-            )
-
 
 class TestNoteEdit(TestCase):
     """Тестирование редактирования заметки."""
@@ -164,13 +171,38 @@ class TestNoteEdit(TestCase):
         )
         cls.form_data = {'title': cls.NEW_NOTE_TITLE,
                          'text': cls.NEW_NOTE_TEXT,
-                         'author': cls.author,
                          'slug': cls.NEW_SLUG}
 
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
         cls.user_client = Client()
         cls.user_client.force_login(cls.user)
+
+    def test_author_can_edit_note(self):
+        """Проверить, что пользователь может редактировать свои заметки."""
+        note = Note.objects.get(id=1)
+        note_count = Note.objects.count()
+        response = self.author_client.post(self.EDIT_URL, data=self.form_data)
+
+        self.assertRedirects(
+            response,
+            self.SUCCESS_URL,
+            msg_prefix='Убедитесь, что после редактирования заметки '
+            'пользователь перенаправляется на страницу.'
+            f'{self.SUCCESS_URL}'
+        )
+        updated_note = Note.objects.get(id=self.note.id)
+
+        self.assertEqual(updated_note.slug, self.form_data.get('slug'),
+                         'Slug неверен!')
+        self.assertEqual(updated_note.text, self.form_data.get('text'),
+                         'Текст неверен!')
+        self.assertEqual(updated_note.title, self.form_data.get('title'),
+                         'Заголовок неверен!')
+        self.assertEqual(updated_note.author, note.author,
+                         'Автор неверен!')
+        self.assertEqual(Note.objects.count(), note_count,
+                         'Количество заметок изменилось!')
 
     def test_author_can_delete_note(self):
         """Проверить, что пользователь может удалять свои заметки."""
@@ -190,35 +222,6 @@ class TestNoteEdit(TestCase):
         self.assertEqual(Note.objects.count(), note_count,
                          'Убедитесь, что заметка не удалена!')
 
-    def test_author_can_edit_note(self):
-        """Проверить, что пользователь может редактировать свои заметки."""
-        note = Note.objects.get(id=1)
-        note_count = Note.objects.count()
-
-        self.form_data['title'] = 'New Title'
-        self.form_data['text'] = 'New Text'
-        response = self.author_client.post(self.EDIT_URL, data=self.form_data)
-
-        self.assertRedirects(
-            response,
-            self.SUCCESS_URL,
-            msg_prefix='Убедитесь, что после редактирования заметки '
-            'пользователь перенаправляется на страницу.'
-            f'{self.SUCCESS_URL}'
-        )
-        updated_note = Note.objects.get(id=1)
-
-        self.assertEqual(updated_note.slug, self.form_data.get('slug'),
-                         'Slug неверен!')
-        self.assertEqual(updated_note.text, self.form_data.get('text'),
-                         'Текст неверен!')
-        self.assertEqual(updated_note.title, self.form_data.get('title'),
-                         'Заголовок неверен!')
-        self.assertEqual(updated_note.author, note.author,
-                         'Автор неверен!')
-        self.assertEqual(Note.objects.count(), note_count,
-                         'Количество заметок изменилось!')
-
     def test_user_cant_edit_note_of_another_user(self):
         """Проверить, что пользователь не может редактировать чужие заметки."""
         note_count = Note.objects.count()
@@ -234,7 +237,7 @@ class TestNoteEdit(TestCase):
             1,
             'Убедитесь, что заметка создана и она одна!'
         )
-        note = Note.objects.get(title=self.note.title)
+        note = Note.objects.get(id=self.note.id)
         self.assertEqual(note.title, self.note.title, 'Заголовок неверен!')
         self.assertEqual(note.text, self.note.text, 'Текст неверен!')
         self.assertEqual(note.slug, self.note.slug, 'Slug неверен!')

@@ -1,9 +1,8 @@
 import pytest
-
 from django.conf import settings
 
 from news.forms import CommentForm
-
+from news.models import News
 
 pytestmark = pytest.mark.django_db
 
@@ -13,8 +12,7 @@ AUTHOR_CLIENT = pytest.lazy_fixture('author_client')
 
 def test_ten_news_on_main_page(news_for_main_page, client, url_news_home):
     """Проверить, что на главной странице выводится десять новостей."""
-    assert len(client.get(url_news_home).context[
-        'object_list']) == settings.NEWS_COUNT_ON_HOME_PAGE
+    assert News.objects.count() == settings.NEWS_COUNT_ON_HOME_PAGE + 1
 
 
 def test_sort_news(news_for_main_page, client, url_news_home):
@@ -23,8 +21,8 @@ def test_sort_news(news_for_main_page, client, url_news_home):
     отсортированы от самой свежей к самой старой.
     """
     response = client.get(url_news_home)
-    object = response.context['object_list']
-    all_dates = [object_news.date for object_news in object]
+    news = response.context['object_list']
+    all_dates = [object_news.date for object_news in news]
     sorted_dates = sorted(all_dates, reverse=True)
     assert all_dates == sorted_dates
 

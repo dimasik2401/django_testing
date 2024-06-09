@@ -124,11 +124,3 @@ def comments_for_same_news(author, news):
             author_id=author.id,
             text=f'Текст_комментария{index}',
         )
-
-
-@pytest.fixture
-def form_data():
-    """Фикстура для создания формы комментария."""
-    return {
-        'text': 'Новый_текст_комментария',
-    }

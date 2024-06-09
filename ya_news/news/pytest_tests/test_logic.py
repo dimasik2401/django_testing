@@ -10,6 +10,10 @@ from news.models import Comment
 
 pytestmark = pytest.mark.django_db
 
+FORM_DATA = {
+    'text': 'Новый_текст_комментария',
+}
+
 
 def test_create_comment_with_bad_words(user_client, news, url_news_detail):
     """Проверить, что нельзя писать в комментарии запрещенные слова."""
@@ -20,10 +24,11 @@ def test_create_comment_with_bad_words(user_client, news, url_news_detail):
     assertFormError(response, form='form', field='text', errors=WARNING)
 
 
-def test_author_can_edit_comment(author_client, comment, form_data,
+def test_author_can_edit_comment(author_client, comment,
                                  url_comment_edit, url_news_detail,
                                  author, news):
     """Проверить, что автор может редактировать свои комментарии."""
+    form_data = FORM_DATA
     count_comments = Comment.objects.count()
     response = author_client.post(url_comment_edit, form_data)
     assertRedirects(response, f'{url_news_detail}#comments')
@@ -44,20 +49,21 @@ def test_author_can_delete_comment(author_client, comment,
 
 
 def test_not_author_can_not_edit_comment(user_client, comment,
-                                         form_data, url_comment_edit,
+                                         url_comment_edit,
                                          author, news):
     """
     Проверить, что пользователь не может
     редактировать чужие комментарии.
     """
+    form_data = FORM_DATA
     count_comments = Comment.objects.count()
     response = user_client.post(url_comment_edit, form_data)
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert Comment.objects.count() == count_comments
     edited_comment_comment = Comment.objects.get(id=comment.id)
     assert edited_comment_comment.text == comment.text
-    assert edited_comment_comment.author == author
-    assert edited_comment_comment.news == news
+    assert edited_comment_comment.author == comment.author
+    assert edited_comment_comment.news == comment.news
 
 
 def test_not_author_can_not_delete_comment(user_client,
@@ -71,11 +77,12 @@ def test_not_author_can_not_delete_comment(user_client,
 
 
 def test_unauthorized_user_cannot_leave_comments(
-        client, news, form_data, url_news_detail, url_users_login):
+        client, news, url_news_detail, url_users_login):
     """
     Проверить, что неавторизированный пользователь
     не может публиковать комментарии.
     """
+    form_data = FORM_DATA
     count_comments = Comment.objects.count()
     response = client.post(url_news_detail, data=form_data)
     assertRedirects(response, f'{url_users_login}?next={url_news_detail}')
@@ -83,11 +90,12 @@ def test_unauthorized_user_cannot_leave_comments(
 
 
 def test_authorized_can_leave_comments(
-        user_client, news, form_data, url_news_detail, user, author):
+        user_client, news, url_news_detail, user, author):
     """
     Проверить, что авторизированный пользователь
     может оставлять комментарии.
     """
+    form_data = FORM_DATA
     count_comments = Comment.objects.count()
     Comment.objects.all().delete()
     response = user_client.post(url_news_detail, data=form_data)

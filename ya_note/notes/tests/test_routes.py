@@ -96,5 +96,5 @@ class TestRoutes(TestCase):
                         msg_prefix=f'Проверьте что страница {url} не доступна '
                                    'для не зарегистрированного пользователя'
                                    ' и осуществляется редирект на '
-                                   '{redirect_url}'
+                                   f'{redirect_url}'
                     )
